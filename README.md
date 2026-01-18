@@ -9,6 +9,8 @@ A modern React-based web application for digit classification with user authenti
 - Modern, responsive UI
 - Form validation
 - Error handling
+- User landing page
+- Admin dashboard
 
 ## Getting Started
 
@@ -49,6 +51,10 @@ src/
   │   ├── Login.js       # Login page component
   │   ├── Register.js    # Register page component
   │   └── Auth.css       # Shared styles for auth pages
+  |   └── landing.css    # Styles for user landing page
+  |   └── landing.js     # landing page component
+  |   └── dashboard.css  # Admin dashboard styles
+  |   └── dasboard.js    # Admin dashboard component
   ├── App.js             # Main app component with routing
   ├── App.css            # App styles
   ├── index.js           # Entry point
