@@ -1,0 +1,192 @@
+/* ------------------- ROOT & GLOBAL ------------------- */
+:root {
+  --primary: #4f46e5;
+  --primary-dark: #4338ca;
+  --bg-light: #f4f6fb;
+  --card: #ffffff;
+  --text-dark: #111827;
+  --text-muted: #6b7280;
+  --radius: 16px;
+  --shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #eef2ff, #f9fafb);
+  color: var(--text-dark);
+}
+
+/* ------------------- CONTAINER ------------------- */
+.landing-container {
+  min-height: 100vh;
+}
+
+/* ------------------- NAVBAR ------------------- */
+.navbar {
+  background: var(--card);
+  padding: 1rem 2.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.navbar h2 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 1.4rem;
+}
+
+.navbar button {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ------------------- HERO ------------------- */
+.hero {
+  max-width: 900px;
+  margin: 4rem auto 2.5rem;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.hero h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ------------------- ACTION BUTTONS ------------------- */
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-bottom: 3rem;
+}
+
+.actions button {
+  padding: 14px 26px;
+  border-radius: 14px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actions button:first-child {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+}
+
+.actions button:last-child {
+  background: #eef2ff;
+  color: var(--primary);
+}
+
+.actions button:hover {
+  transform: translateY(-2px);
+}
+
+/* ------------------- CAMERA BOX ------------------- */
+.camera-box {
+  max-width: 520px;
+  margin: 0 auto 3.5rem;
+  background: var(--card);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.camera-box video {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.camera-box button {
+  padding: 10px 22px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ------------------- ABOUT SECTION ------------------- */
+.about {
+  max-width: 900px;
+  margin: 0 auto 4rem;
+  background: var(--card);
+  padding: 2.5rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.about h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.about p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ------------------- DASHBOARD ------------------- */
+.dashboard {
+  max-width: 900px;
+  margin: 4rem auto;
+  text-align: center;
+}
+
+.dashboard-card {
+  background: var(--card);
+  padding: 3rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.dashboard-card h1 {
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-card p {
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+}
+
+.dashboard-card button {
+  padding: 10px 22px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+}
+
+/* ------------------- SMALL POLISH ------------------- */
+button {
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  opacity: 0.95;
+}
