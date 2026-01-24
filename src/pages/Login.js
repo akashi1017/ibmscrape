@@ -32,26 +32,11 @@ const Login = () => {
     }
 
     try {
-      // TEMPORARY ADMIN LOGIN (frontend only)
-      if (formData.email === "user@user" && formData.password === "user") {
-        localStorage.setItem("token", "user-token");
-        localStorage.setItem("role", "user");
-        navigate("/landing");
-        return;
-      }
-
-        if (formData.email === "admin@admin" && formData.password === "admin") {
-          localStorage.setItem("token", "admin-token");
-          localStorage.setItem("role", "admin");
-          navigate("/dashboard");
-          return;
-        }
-
-      // Normal API login (future use)
+      // API login call to FastAPI backend
       const response = await fetch(
         `${
           process.env.REACT_APP_API_URL || "http://localhost:8000"
-        }/api/auth/login`,
+        }/api/auth/login-json`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -61,13 +46,14 @@ const Login = () => {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.token) {
-          localStorage.setItem("token", data.token);
+        if (data.access_token) {
+          localStorage.setItem("token", data.access_token);
+          localStorage.setItem("tokenType", data.token_type);
         }
-        navigate("/landing");
+        navigate("/dashboard");
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || "Invalid email or password");
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || "Invalid email or password");
       }
     } catch (err) {
       setError("Network error. Please try again.");

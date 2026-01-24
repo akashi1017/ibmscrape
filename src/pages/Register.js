@@ -61,14 +61,11 @@ const Register = () => {
 
       if (response.ok) {
         const data = await response.json();
-        // Store token if provided
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-        }
-        navigate('/login'); // Redirect to login after successful registration
+        // Registration successful, redirect to login
+        navigate('/login');
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Registration failed. Please try again.');
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.detail || 'Registration failed. Please try again.');
       }
     } catch (err) {
       setError('Network error. Please try again.');
