@@ -1,36 +1,24 @@
 # Backend Setup Guide
 
-This guide will help you set up the FastAPI backend with PostgreSQL for the Digit Classification application.
+This guide covers the FastAPI backend setup for the Digit Classification application.
+
+## Current Setup: SQLite (Recommended for Development)
+
+The backend is configured to use **SQLite** by default - no database server installation needed!
+
+The database file (`database.db`) is automatically created in the project root when the server starts.
 
 ## Prerequisites
 
 1. **Python 3.8+** installed
-2. **PostgreSQL** installed and running
-3. **pip** (Python package manager)
+2. **pip** (Python package manager)
 
-## Step 1: Install PostgreSQL
+**Note:** PostgreSQL is optional. Skip to "Step 2: Install Python Dependencies" if using SQLite.
 
-### Windows:
-1. Download PostgreSQL from https://www.postgresql.org/download/windows/
-2. Install PostgreSQL (remember the password you set for the `postgres` user)
-3. PostgreSQL will run on `localhost:5432` by default
+## Step 1: Install Python Dependencies
 
-### Create Database:
-```sql
-CREATE DATABASE digit_classification_db;
-```
+Navigate to the project root directory and install required packages:
 
-Or using psql command line:
-```bash
-psql -U postgres
-CREATE DATABASE digit_classification_db;
-\q
-```
-
-## Step 2: Install Python Dependencies
-
-1. Navigate to the project root directory
-2. Install required packages:
 ```bash
 pip install -r requirements.txt
 ```
@@ -50,47 +38,42 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Step 3: Configure Environment Variables
+## Step 2: Configure Environment Variables
 
-1. Copy the example environment file:
-```bash
-copy backend\.env.example backend\.env
+The `.env` file is pre-configured for SQLite development. 
+
+**For SQLite (default):**
+No additional configuration needed! The database will be created automatically.
+
+**For PostgreSQL (optional):**
+1. Install PostgreSQL: https://www.postgresql.org/download/windows/
+2. Create the database:
+```sql
+psql -U postgres
+CREATE DATABASE digit_classification_db;
+\q
 ```
-
-2. Edit `backend/.env` and update:
+3. Edit `backend/.env` and update:
 ```
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/digit_classification_db
 SECRET_KEY=your-super-secret-key-change-this-in-production
 ```
 
-Replace:
-- `YOUR_PASSWORD` with your PostgreSQL password
-- `your-super-secret-key-change-this-in-production` with a secure random string
-
-## Step 4: Create Database Tables
-
-Run the database setup script:
-```bash
-python backend/database_setup.py
-```
-
-Or tables will be created automatically when you first run the server.
-
-## Step 5: Run the Backend Server
-
 Start the FastAPI server:
+
 ```bash
 python backend/run.py
 ```
 
-Or using uvicorn directly:
-```bash
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+You should see:
+```
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Application startup complete.
 ```
 
 The API will be available at:
 - **API**: http://localhost:8000
-- **Interactive API Docs**: http://localhost:8000/docs
+- **Interactive API Docs**: http://localhost:8000/docs (try registering/logging in here!)
 - **Alternative Docs**: http://localhost:8000/redoc
 
 ## API Endpoints
@@ -131,9 +114,22 @@ The API will be available at:
 ### Port Already in Use
 - Change the port in `backend/run.py` or use: `uvicorn backend.main:app --port 8001`
 
-## Database Schema
+## Database Information
 
-### Users Table
+### SQLite (Development - Default)
+- File: `database.db` in project root
+- Auto-created on first server start
+- Delete and restart server to reset database
+- Perfect for local development
+
+### PostgreSQL (Production - Optional)
+- Requires separate server installation
+- Multi-user capable
+- Better for production deployments
+- Follow PostgreSQL setup steps above to switch
+
+### Database Schema
+**Users Table:**
 - `id` (Integer, Primary Key)
 - `name` (String)
 - `email` (String, Unique)
@@ -148,3 +144,4 @@ The API will be available at:
 3. **Use HTTPS** in production
 4. **Implement rate limiting** for authentication endpoints in production
 5. **Use strong passwords** - consider adding password strength validation
+6. **SQLite for dev only** - Use PostgreSQL for production deployments

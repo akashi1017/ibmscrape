@@ -5,31 +5,21 @@
 1. ✅ Python dependencies installed
 2. ✅ Backend code structure created
 3. ✅ Frontend connected to backend API
+4. ✅ SQLite database configured (no server needed!)
 
 ## 🚀 To Start the Application
 
-### 1. Set Up PostgreSQL Database
+### 1. Database Setup (Automatic)
 
-**Option A: Using PostgreSQL Command Line**
-```sql
-psql -U postgres
-CREATE DATABASE digit_classification_db;
-\q
-```
+SQLite database is automatically created when the backend server starts. No manual setup needed!
 
-**Option B: Using pgAdmin or any PostgreSQL GUI**
-- Create a new database named: `digit_classification_db`
+The database file `database.db` will be created in the project root directory.
 
-### 2. Update Database Credentials
+**Note:** If you want to use PostgreSQL instead of SQLite:
+- Update `DATABASE_URL` in `backend/.env` to: `postgresql://postgres:YOUR_PASSWORD@localhost:5432/digit_classification_db`
+- PostgreSQL setup guide available in `BACKEND_README.md`
 
-Edit `backend/.env` and update:
-```
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/digit_classification_db
-```
-
-Replace `YOUR_PASSWORD` with your PostgreSQL password.
-
-### 3. Start the Backend Server
+### 2. Start the Backend Server
 
 ```bash
 python backend/run.py
@@ -61,14 +51,18 @@ The frontend will run on **http://localhost:3000**
 
 ## ⚠️ Troubleshooting
 
-**Database Connection Error:**
-- Make sure PostgreSQL is running
-- Verify database `digit_classification_db` exists
-- Check `DATABASE_URL` in `backend/.env`
+**Server won't start:**
+- Make sure you're in the project root directory: `cd e:\IBM_project`
+- Verify all dependencies: `python -m pip install -r requirements.txt`
+- Check for Python errors in the terminal output
 
 **Port Already in Use:**
 - Change port in `backend/run.py` or use: `uvicorn backend.main:app --port 8001`
 
-**Import Errors:**
-- Make sure you're in the project root directory
-- Verify all dependencies: `python -m pip install -r requirements.txt`
+**Database Issues (SQLite):**
+- Delete `database.db` file and restart the server to recreate it
+- The database file is created automatically in the project root
+
+**Want to use PostgreSQL instead:**
+- Follow the guide in `BACKEND_README.md`
+- Update `DATABASE_URL` in `backend/.env`
