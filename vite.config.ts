@@ -54,6 +54,8 @@
       outDir: 'build',
     },
     server: {
+      host: true,
+      allowedHosts:["unlogged-kody-driftiest.ngrok-free.dev"],
       port: 3000,
       open: true,
     },

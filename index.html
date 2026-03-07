@@ -5,11 +5,43 @@
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <title>Mnist Dashboard</title>
+      <script>
+        // Landbot
+        window.addEventListener('mouseover', initLandbot, { once: true });
+        window.addEventListener('touchstart', initLandbot, { once: true });
+        var myLandbot;
+        function initLandbot() {
+          if (!myLandbot) {
+            var s = document.createElement('script');
+            s.type = "module"
+            s.async = true;
+            s.addEventListener('load', function() {
+              var myLandbot = new Landbot.Livechat({
+                configUrl: 'https://storage.googleapis.com/landbot.online/v3/H-3345088-32W0OC4P5410S8NP/index.json',
+              });
+            });
+            s.src = 'https://cdn.landbot.io/landbot-3/landbot-3.0.0.mjs';
+            var x = document.getElementsByTagName('script')[0];
+            x.parentNode.insertBefore(s, x);
+          }
+        }
+      </script>
     </head>
 
     <body>
       <div id="root"></div>
       <script type="module" src="/src/main.tsx"></script>
+      <script>
+        function initFreshdesk() {
+          window.fdWidget.init({
+            token: "01KJYH4W3JG59F1SYBD5G1KKYJ",
+            host: "https://gnuac-help.freshdesk.com",
+            widgetId: "01KJYH4XEP3MT1NDF2ZJ4WP43K"
+          });
+        }
+
+        function initialize(i, t) { var e; i.getElementById(t) ? initFreshdesk() : ((e = i.createElement("script")).id = t, e.async = !0, e.src = "https://gnuac-help.freshdesk.com/webchat/js/widget.js", e.onload = initFreshdesk, i.head.appendChild(e)) } function initiateCall() { initialize(document, "Freshdesk-js-sdk") } window.addEventListener ? window.addEventListener("load", initiateCall, !1) : window.attachEvent("load", initiateCall, !1);
+      </script>
     </body>
   </html>
   
