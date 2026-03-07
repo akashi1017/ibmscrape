@@ -1,0 +1,36 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=digituser
+      - POSTGRES_PASSWORD=digitpass
+      - POSTGRES_DB=digitdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U digituser -d digitdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+      - ./uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://digituser:digitpass@db:5432/digitdb
+      - SECRET_KEY=supersecretjwtkey_changeme_in_production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:

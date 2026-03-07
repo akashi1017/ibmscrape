@@ -81,3 +81,18 @@ jspm_packages/
 
 # DynamoDB Local files
 .dynamodb/
+
+
+__pycache__/
+*.pyc
+*.pyo
+
+.env
+
+pip_out.txt
+pip_out2.txt
+
+*.keras
+*.h5
+*.pt
+*.pth
