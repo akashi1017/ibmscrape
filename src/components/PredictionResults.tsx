@@ -2,65 +2,56 @@ import { Prediction } from "./UserDashboard";
 import { Skeleton } from "./ui/skeleton";
 
 interface PredictionResultsProps {
-  predictions: Prediction[];
+  prediction: Prediction | null;
   isLoading?: boolean;
 }
 
-export function PredictionResults({ predictions, isLoading }: PredictionResultsProps) {
+export function PredictionResults({ prediction, isLoading }: PredictionResultsProps) {
   if (isLoading) {
     return (
-      <div className="space-y-4" aria-busy="true" aria-live="polite">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <Skeleton className="h-10 w-12 rounded-lg" />
-              <Skeleton className="h-5 w-14 rounded" />
-            </div>
-            <Skeleton className="h-2 w-full rounded-full" />
-          </div>
-        ))}
-        <p className="text-sm text-gray-500 pt-2">Analyzing digit…</p>
+      <div className="space-y-4 text-center" aria-busy="true" aria-live="polite">
+        <Skeleton className="h-28 w-28 rounded-2xl mx-auto" />
+        <Skeleton className="h-5 w-24 rounded mx-auto" />
+        <p className="text-sm text-gray-500 pt-1">Analyzing digit…</p>
       </div>
     );
   }
 
-  if (predictions.length === 0) {
+  if (!prediction) {
     return (
       <div className="text-center py-12 text-gray-500">
-        <p>Draw a digit and click "Predict" to see results</p>
+        <p className="text-4xl mb-3">🖊️</p>
+        <p className="text-sm">Draw a digit and click "Predict" to see the result</p>
       </div>
     );
   }
 
+  const confidencePct = (prediction.confidence * 100).toFixed(1);
+
   return (
-    <div className="space-y-4">
-      {predictions.map((pred, index) => (
-        <div key={index} className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className={`text-4xl font-bold ${index === 0 ? 'text-blue-600' : 'text-gray-400'}`}>
-                {pred.digit}
-              </span>
-              <span className={`text-sm ${index === 0 ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
-                {(pred.confidence * 100).toFixed(1)}%
-              </span>
-            </div>
-            {index === 0 && (
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                Best Match
-              </span>
-            )}
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                index === 0 ? 'bg-blue-600' : 'bg-gray-400'
-              }`}
-              style={{ width: `${pred.confidence * 100}%` }}
-            />
-          </div>
+    <div className="flex flex-col items-center gap-5">
+      {/* Large digit display */}
+      <div className="flex items-center justify-center w-28 h-28 rounded-2xl bg-blue-50 border-2 border-blue-200">
+        <span className="text-6xl font-extrabold text-blue-600">{prediction.digit}</span>
+      </div>
+
+      {/* Confidence */}
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-sm font-medium text-gray-700">Confidence</span>
+          <span className="text-sm font-bold text-blue-600">{confidencePct}%</span>
         </div>
-      ))}
+        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+          <div
+            className="h-full bg-blue-600 rounded-full transition-all duration-700"
+            style={{ width: `${confidencePct}%` }}
+          />
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-500 text-center">
+        The model predicts this digit with {confidencePct}% confidence.
+      </p>
     </div>
   );
 }

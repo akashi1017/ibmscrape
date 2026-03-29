@@ -259,7 +259,7 @@ export function LoginPage({ onSubmit, error }: LoginPageProps) {
         >
           Don&apos;t have an account?{" "}
           <Link
-            to="#"
+            to="/register"
             style={{
               color: "#5b59df",
               fontWeight: 700,

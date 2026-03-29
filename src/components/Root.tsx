@@ -1,21 +1,17 @@
-import { Outlet } from "react-router";
+import { Outlet, Navigate } from "react-router";
 import { BarChart3, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Toaster } from "sonner";
 import { useNavigate } from "react-router";
 
-const AUTH_STORAGE_KEY = "mnist-auth";
+const AUTH_STORAGE_KEY = "mnist-auth-token";
 const ROLE_STORAGE_KEY = "mnist-auth-role";
 
 export type AuthRole = "user" | "admin";
 
-// Demo passwords – change or use env for production
-const USER_PASSWORD = "user";
-const ADMIN_PASSWORD = "admin";
-
 function getStoredRole(): AuthRole | null {
   try {
-    const role = sessionStorage.getItem(ROLE_STORAGE_KEY) || localStorage.getItem(ROLE_STORAGE_KEY);
+    const role = localStorage.getItem(ROLE_STORAGE_KEY);
     return role === "user" || role === "admin" ? role : null;
   } catch {
     return null;
@@ -24,10 +20,8 @@ function getStoredRole(): AuthRole | null {
 
 function isAuthenticated(): boolean {
   try {
-    return (
-      sessionStorage.getItem(AUTH_STORAGE_KEY) === "true" ||
-      localStorage.getItem(AUTH_STORAGE_KEY) === "true"
-    );
+    const token = localStorage.getItem(AUTH_STORAGE_KEY);
+    return !!token;
   } catch {
     return false;
   }
@@ -37,32 +31,33 @@ export default function Root() {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [role, setRole] = useState<AuthRole | null>(null);
+  const [userName, setUserName] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = () => {
+      console.log("Root: Checking authentication...");
       const auth = isAuthenticated();
       const storedRole = getStoredRole();
+      const storedName = localStorage.getItem("mnist-auth-name") ?? "";
+      console.log("Root: Auth state:", { auth, storedRole, storedName });
+
       setAuthenticated(auth);
       setRole(storedRole);
+      setUserName(storedName);
       setLoading(false);
-      
-      if (!auth) {
-        navigate("/login");
-      }
+      console.log("Root: Loading set to false");
     };
 
     checkAuth();
-  }, [navigate]);
+  }, []);
 
   const handleLogout = () => {
     try {
-      sessionStorage.removeItem(AUTH_STORAGE_KEY);
-      sessionStorage.removeItem(ROLE_STORAGE_KEY);
       localStorage.removeItem(AUTH_STORAGE_KEY);
       localStorage.removeItem(ROLE_STORAGE_KEY);
-    } catch {}
-    
+    } catch { }
+
     navigate("/login");
   };
 
@@ -78,7 +73,7 @@ export default function Root() {
   }
 
   if (!authenticated) {
-    return null; // Will redirect to /login
+    return <Navigate to="/login" replace />;
   }
 
   const isAdmin = role === "admin";
@@ -97,14 +92,14 @@ export default function Root() {
             <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-medium text-gray-900">
-                  {isAdmin ? "Admin" : "User"}
+                  {userName || (isAdmin ? "Admin" : "User")}
                 </div>
                 <div className="text-xs text-gray-500">
                   {isAdmin ? "Administrator" : "Member"}
                 </div>
               </div>
               <div className="size-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
-                {isAdmin ? "A" : "U"}
+                {userName ? userName.charAt(0).toUpperCase() : (isAdmin ? "A" : "U")}
               </div>
               <button
                 type="button"

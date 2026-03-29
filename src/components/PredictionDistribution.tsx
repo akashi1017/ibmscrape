@@ -1,45 +1,60 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const data = [
-  { digit: '0', count: 4523 },
-  { digit: '1', count: 4891 },
-  { digit: '2', count: 4328 },
-  { digit: '3', count: 4667 },
-  { digit: '4', count: 4234 },
-  { digit: '5', count: 4112 },
-  { digit: '6', count: 4456 },
-  { digit: '7', count: 4789 },
-  { digit: '8', count: 4345 },
-  { digit: '9', count: 4583 },
+interface PredictionDistributionProps {
+  distribution: Record<string, number>;
+}
+
+const DIGIT_COLORS = [
+  '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444',
+  '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1',
 ];
 
-export function PredictionDistribution() {
+export function PredictionDistribution({ distribution }: PredictionDistributionProps) {
+  // Build data for digits 0–9, defaulting to 0 if no predictions for that digit
+  const data = Array.from({ length: 10 }, (_, i) => ({
+    digit: String(i),
+    count: distribution[String(i)] ?? 0,
+  }));
+
+  const total = data.reduce((sum, d) => sum + d.count, 0);
+
+  if (total === 0) {
+    return (
+      <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
+        No predictions recorded yet.
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={data}>
+      <BarChart data={data} barCategoryGap="30%">
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis 
-          dataKey="digit" 
+        <XAxis
+          dataKey="digit"
           stroke="#9ca3af"
           style={{ fontSize: '12px' }}
+          label={{ value: 'Digit', position: 'insideBottom', offset: -2, fontSize: 12, fill: '#6b7280' }}
         />
-        <YAxis 
+        <YAxis
           stroke="#9ca3af"
           style={{ fontSize: '12px' }}
+          allowDecimals={false}
         />
-        <Tooltip 
+        <Tooltip
           contentStyle={{
             backgroundColor: '#fff',
             border: '1px solid #e5e7eb',
             borderRadius: '8px',
-            fontSize: '12px'
+            fontSize: '12px',
           }}
+          formatter={(value: number) => [value.toLocaleString(), 'Predictions']}
         />
-        <Bar 
-          dataKey="count" 
-          fill="#3b82f6"
-          radius={[4, 4, 0, 0]}
-        />
+        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+          {data.map((_, index) => (
+            <Cell key={`cell-${index}`} fill={DIGIT_COLORS[index % DIGIT_COLORS.length]} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

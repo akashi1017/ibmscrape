@@ -1,7 +1,7 @@
 import os
-import random
 import numpy as np
 import cv2
+from fastapi import HTTPException
 
 try:
     import tensorflow as tf
@@ -11,31 +11,42 @@ except ImportError:
 _model = None
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-keras_path = os.path.join(BASE_DIR, "best_mnist_cnn.keras")
-saved_model_path = os.path.join(BASE_DIR, "saved_model.pb")
+# Search for model files in order of priority
+model_paths = [
+    os.path.join(BASE_DIR, "best_mnist_cnn.keras"),
+    os.path.join(BASE_DIR, "best_model.pb"),
+    BASE_DIR  # Assuming SavedModel directory
+]
 
 if tf:
-    if os.path.exists(keras_path):
-        try:
-            _model = tf.keras.models.load_model(keras_path)
-            print(f"Loaded Keras model from {keras_path}")
-        except Exception as e:
-            print(f"Warning: Failed to load keras model from {keras_path}: {e}")
-    elif os.path.exists(saved_model_path) or os.path.exists(os.path.join(BASE_DIR, "variables")):
-        try:
-            _model = tf.keras.models.load_model(BASE_DIR)
-            print(f"Loaded SavedModel from {BASE_DIR}")
-        except Exception as e:
-            print(f"Warning: Failed to load saved model from {BASE_DIR}: {e}")
-    else:
-        print("Warning: No model file found. Running in stub mode.")
+    for path in model_paths:
+        if os.path.exists(path):
+            try:
+                # Try loading as keras model first
+                _model = tf.keras.models.load_model(path)
+                print(f"Loaded model from {path}")
+                break
+            except Exception as e:
+                try:
+                    # Fallback to saved_model if keras fails
+                    _model = tf.saved_model.load(path)
+                    print(f"Loaded SavedModel from {path}")
+                    break
+                except Exception as e2:
+                    print(f"Warning: Failed to load model from {path}: {e2}")
+    
+    if _model is None:
+        print("Warning: No valid model file found in backend directory.")
 else:
-    print("Warning: TensorFlow not installed. Running in stub mode.")
+    print("Warning: TensorFlow not installed. Predictions will fail.")
 
 def _preprocess(image_bytes: bytes) -> np.ndarray:
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     
+    if img is None:
+        raise HTTPException(status_code=400, detail="Invalid image format")
+        
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
     
@@ -47,13 +58,20 @@ def _preprocess(image_bytes: bytes) -> np.ndarray:
 
 def predict(image_bytes: bytes) -> tuple[int, float, dict]:
     if _model is None:
-        digit = random.randint(0, 9)
-        confidence = random.uniform(0.7, 0.99)
-        raw_scores = {str(i): random.random() for i in range(10)}
-        return digit, float(confidence), raw_scores
+        raise HTTPException(
+            status_code=503, 
+            detail="ML Model not available. Please ensure model files are correctly placed in the backend directory."
+        )
         
     processed_img = _preprocess(image_bytes)
-    predictions = _model.predict(processed_img)
+    
+    # Handle different model types (Keras vs SavedModel)
+    if hasattr(_model, "predict"):
+        predictions = _model.predict(processed_img)
+    else:
+        # SavedModel fallback
+        infer = _model.signatures["serving_default"]
+        predictions = infer(tf.constant(processed_img))["dense_2"].numpy() # Adjust output key if needed
     
     digit = int(np.argmax(predictions[0]))
     confidence = float(predictions[0][digit])

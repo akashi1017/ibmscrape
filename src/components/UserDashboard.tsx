@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Eraser, Send, TrendingUp, Clock, Upload, Pencil } from "lucide-react";
+import { Eraser, Send, TrendingUp, Clock, Upload, Pencil, AlertCircle } from "lucide-react";
 import { DigitCanvas } from "./DigitCanvas";
 import { PredictionResults } from "./PredictionResults";
 import { RecentPredictions } from "./RecentPredictions";
 import { ImageUpload } from "./ImageUpload";
+import API_BASE from "../config";
 
 export interface Prediction {
   digit: number;
@@ -18,85 +19,126 @@ export interface PredictionHistory {
   imageData: string;
 }
 
-const HISTORY_STORAGE_KEY = "mnist-prediction-history";
-const MAX_HISTORY = 10;
-
-function loadHistoryFromStorage(): PredictionHistory[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .slice(0, MAX_HISTORY)
-      .map((item: { id?: string; timestamp?: string; prediction?: number; confidence?: number; imageData?: string }) => ({
-        id: String(item.id ?? ""),
-        timestamp: item.timestamp ? new Date(item.timestamp) : new Date(0),
-        prediction: Number(item.prediction ?? 0),
-        confidence: Number(item.confidence ?? 0),
-        imageData: String(item.imageData ?? ""),
-      }))
-      .filter((item) => item.id && item.imageData);
-  } catch {
-    return [];
-  }
-}
-
-function saveHistoryToStorage(history: PredictionHistory[]) {
-  try {
-    const toSave = history.slice(0, MAX_HISTORY).map((item) => ({
-      ...item,
-      timestamp: item.timestamp.toISOString(),
-    }));
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(toSave));
-  } catch {
-    // ignore quota or other storage errors
-  }
-}
-
 export function UserDashboard() {
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [history, setHistory] = useState<PredictionHistory[]>(loadHistoryFromStorage);
+  const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [history, setHistory] = useState<PredictionHistory[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mode, setMode] = useState<'draw' | 'upload'>('draw');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const handlePredict = () => {
-    const imageData = mode === 'draw' 
-      ? canvasRef.current?.toDataURL() 
-      : uploadedImage;
-    
-    if (!imageData) return;
-    
-    setIsProcessing(true);
-    
-    // Simulate ML model prediction
-    setTimeout(() => {
-      const mockPredictions: Prediction[] = [
-        { digit: Math.floor(Math.random() * 10), confidence: 0.85 + Math.random() * 0.14 },
-        { digit: Math.floor(Math.random() * 10), confidence: 0.05 + Math.random() * 0.15 },
-        { digit: Math.floor(Math.random() * 10), confidence: 0.01 + Math.random() * 0.08 },
-      ].sort((a, b) => b.confidence - a.confidence);
+  const userName = localStorage.getItem("mnist-auth-name") || "there";
+  const token = localStorage.getItem("mnist-auth-token");
 
-      setPredictions(mockPredictions);
-      
-      // Add to history
-      const newHistory: PredictionHistory = {
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        prediction: mockPredictions[0].digit,
-        confidence: mockPredictions[0].confidence,
-        imageData: imageData,
+  // Load prediction history from backend (user-scoped via JWT)
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_BASE}/api/history`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: Array<{ id: number; predicted_digit: number; confidence: number; created_at: string; image_path?: string }>) => {
+        const mapped: PredictionHistory[] = data.map((item) => ({
+          id: String(item.id),
+          timestamp: new Date(item.created_at),
+          prediction: item.predicted_digit,
+          confidence: item.confidence,
+          // Backend stores the image path; build a URL or use empty string
+          imageData: item.image_path
+            ? `${API_BASE}/${item.image_path}`
+            : "",
+        }));
+        setHistory(mapped);
+      })
+      .catch(() => setHistory([]));
+  }, [token]);
+
+  const handlePredict = async () => {
+    setErrorMessage(null);
+    setPrediction(null);
+
+    let imageBlob: Blob | null = null;
+    let previewDataUrl: string | null = null;
+
+    if (mode === 'draw') {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      previewDataUrl = canvas.toDataURL("image/png");
+      await new Promise<void>((resolve) => {
+        canvas.toBlob((blob) => {
+          imageBlob = blob;
+          resolve();
+        }, "image/png");
+      });
+    } else {
+      if (!uploadedImage) return;
+      previewDataUrl = uploadedImage;
+      const res = await fetch(uploadedImage);
+      imageBlob = await res.blob();
+    }
+
+    if (!imageBlob) {
+      setErrorMessage("Could not read image. Please try again.");
+      return;
+    }
+
+    if (!token) {
+      setErrorMessage("You are not logged in. Please log in and try again.");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", imageBlob, "digit.png");
+
+      const response = await fetch(`${API_BASE}/api/predict`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: `Server error: ${response.status}` }));
+        let detail = errorData.detail;
+        if (Array.isArray(detail)) {
+          detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
+        } else if (typeof detail === "object" && detail !== null) {
+          detail = JSON.stringify(detail);
+        }
+        throw new Error(detail ?? `Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const result: Prediction = {
+        digit: data.predicted_digit,
+        confidence: data.confidence,
       };
-      
-      setHistory(prev => [newHistory, ...prev].slice(0, 10));
+
+      setPrediction(result);
+
+      // Add to the top of history list (don't need to re-fetch)
+      const newEntry: PredictionHistory = {
+        id: String(data.id),
+        timestamp: new Date(data.created_at),
+        prediction: result.digit,
+        confidence: result.confidence,
+        imageData: previewDataUrl ?? "",
+      };
+      setHistory(prev => [newEntry, ...prev].slice(0, 20));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+      setErrorMessage(message);
+    } finally {
       setIsProcessing(false);
-    }, 800);
+    }
   };
 
   const handleClear = () => {
-    setPredictions([]);
+    setPrediction(null);
+    setErrorMessage(null);
     if (mode === 'upload') {
       setUploadedImage(null);
     }
@@ -104,16 +146,14 @@ export function UserDashboard() {
 
   const handleImageUpload = (dataUrl: string) => {
     setUploadedImage(dataUrl);
-    setPredictions([]);
+    setPrediction(null);
+    setErrorMessage(null);
   };
-
-  useEffect(() => {
-    saveHistoryToStorage(history);
-  }, [history]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
+        <p className="text-sm font-medium text-blue-600 mb-1">Welcome back, {userName} 👋</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Digit Recognition</h1>
         <p className="text-gray-600">Draw a digit or upload an image to see the model's prediction</p>
       </div>
@@ -127,26 +167,23 @@ export function UserDashboard() {
                 <h2 className="text-xl font-semibold text-gray-900">
                   {mode === 'draw' ? 'Draw Here' : 'Upload Image'}
                 </h2>
-                {/* Mode Toggle */}
                 <div className="flex bg-gray-100 rounded-lg p-1 ml-4">
                   <button
                     onClick={() => setMode('draw')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                      mode === 'draw' 
-                        ? 'bg-white text-blue-600 shadow-sm' 
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${mode === 'draw'
+                        ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     <Pencil className="size-4" />
                     Draw
                   </button>
                   <button
                     onClick={() => setMode('upload')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                      mode === 'upload' 
-                        ? 'bg-white text-blue-600 shadow-sm' 
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${mode === 'upload'
+                        ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     <Upload className="size-4" />
                     Upload
@@ -161,13 +198,13 @@ export function UserDashboard() {
                 Clear
               </button>
             </div>
-            
+
             {mode === 'draw' ? (
               <DigitCanvas ref={canvasRef} onClear={handleClear} />
             ) : (
               <ImageUpload onImageUpload={handleImageUpload} uploadedImage={uploadedImage} />
             )}
-            
+
             <button
               onClick={handlePredict}
               disabled={isProcessing}
@@ -191,7 +228,7 @@ export function UserDashboard() {
           <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="size-5 text-gray-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Recent Predictions</h2>
+              <h2 className="text-xl font-semibold text-gray-900">My Recent Predictions</h2>
             </div>
             <RecentPredictions history={history} />
           </div>
@@ -202,9 +239,17 @@ export function UserDashboard() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="size-5 text-blue-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Predictions</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Result</h2>
             </div>
-            <PredictionResults predictions={predictions} isLoading={isProcessing} />
+
+            {errorMessage && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
+                <AlertCircle className="size-5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{errorMessage}</p>
+              </div>
+            )}
+
+            <PredictionResults prediction={prediction} isLoading={isProcessing} />
           </div>
         </div>
       </div>

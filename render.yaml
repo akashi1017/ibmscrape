@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: digit-classification-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # You will paste this manually in Render dashboard
+      - key: SECRET_KEY
+        sync: false   # You will set this manually in Render dashboard
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 60
