@@ -18,7 +18,7 @@ function LoginWithAPI() {
   const handleLogin = async (credentials: any) => {
     setError(null);
     try {
-      const response = await fetch("${API_BASE}/api/auth/login-json", {
+      const response = await fetch(`${API_BASE}/api/auth/login-json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -43,7 +43,7 @@ function LoginWithAPI() {
       localStorage.setItem("mnist-auth-token", token);
 
       // Get user details
-      const userResponse = await fetch("${API_BASE}/api/auth/me", {
+      const userResponse = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
