@@ -1,7 +1,11 @@
 import os
+import urllib.request
 import numpy as np
 import cv2
 from fastapi import HTTPException
+from dotenv import load_dotenv
+
+load_dotenv()
 
 try:
     import tensorflow as tf
@@ -10,6 +14,30 @@ except ImportError:
 
 _model = None
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Download model files from HuggingFace if not present locally
+HF_FILES = {
+    "best_mnist_cnn.keras": os.getenv("HF_MODEL_URL"),
+    "best_model.pb": os.getenv("HF_FALLBACK_URL"),
+}
+
+def download_models():
+    for filename, url in HF_FILES.items():
+        dest = os.path.join(BASE_DIR, filename)
+        if not os.path.exists(dest):
+            if url:
+                print(f"Downloading {filename} from HuggingFace...")
+                try:
+                    urllib.request.urlretrieve(url, dest)
+                    print(f"Downloaded {filename} successfully.")
+                except Exception as e:
+                    print(f"Warning: Could not download {filename}: {e}")
+            else:
+                print(f"Warning: No URL set for {filename}, skipping download.")
+        else:
+            print(f"{filename} already exists, skipping download.")
+
+download_models()
 
 # Search for model files in order of priority
 model_paths = [

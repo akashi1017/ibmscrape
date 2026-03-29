@@ -11,3 +11,7 @@ services:
         sync: false   # You will set this manually in Render dashboard
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 60
+      - key: HF_MODEL_URL
+        value: https://huggingface.co/akashi1017/digit-classification-mnist/resolve/main/best_mnist_cnn.keras
+      - key: HF_FALLBACK_URL
+        value: https://huggingface.co/akashi1017/digit-classification-mnist/resolve/main/best_model.pb
