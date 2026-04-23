@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, ConfigDict, Field
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -47,3 +47,15 @@ class PredictionResponse(PredictionBase):
 class PredictionResponseAdmin(PredictionResponse):
     user_name: str
     user_email: str
+
+class DigitResult(BaseModel):
+    digit: int
+    confidence: float
+    raw_scores: Optional[Dict] = None
+
+class MultiDigitPredictionResponse(BaseModel):
+    number: str
+    avg_confidence: float
+    digit_count: int
+    digits: List[DigitResult]
+    image_path: Optional[str] = None

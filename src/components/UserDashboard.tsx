@@ -11,6 +11,19 @@ export interface Prediction {
   confidence: number;
 }
 
+export interface MultiDigitResult {
+  digit: number;
+  confidence: number;
+  raw_scores: Record<string, number>;
+}
+
+export interface MultiDigitPrediction {
+  number: string;
+  avg_confidence: number;
+  digit_count: number;
+  digits: MultiDigitResult[];
+}
+
 export interface PredictionHistory {
   id: string;
   timestamp: Date;
@@ -21,10 +34,12 @@ export interface PredictionHistory {
 
 export function UserDashboard() {
   const [prediction, setPrediction] = useState<Prediction | null>(null);
+  const [multiPrediction, setMultiPrediction] = useState<MultiDigitPrediction | null>(null);
   const [history, setHistory] = useState<PredictionHistory[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mode, setMode] = useState<'draw' | 'upload'>('draw');
+  const [predictMode, setPredictMode] = useState<'single' | 'multi'>('single');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -57,6 +72,7 @@ export function UserDashboard() {
   const handlePredict = async () => {
     setErrorMessage(null);
     setPrediction(null);
+    setMultiPrediction(null);
 
     let imageBlob: Blob | null = null;
     let previewDataUrl: string | null = null;
@@ -94,7 +110,11 @@ export function UserDashboard() {
       const formData = new FormData();
       formData.append("file", imageBlob, "digit.png");
 
-      const response = await fetch(`${API_BASE}/api/predict`, {
+      const endpoint = predictMode === 'multi'
+        ? `${API_BASE}/api/predict-multi`
+        : `${API_BASE}/api/predict`;
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -104,7 +124,7 @@ export function UserDashboard() {
         const errorData = await response.json().catch(() => ({ detail: `Server error: ${response.status}` }));
         let detail = errorData.detail;
         if (Array.isArray(detail)) {
-          detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
+          detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join(";");
         } else if (typeof detail === "object" && detail !== null) {
           detail = JSON.stringify(detail);
         }
@@ -112,22 +132,32 @@ export function UserDashboard() {
       }
 
       const data = await response.json();
-      const result: Prediction = {
-        digit: data.predicted_digit,
-        confidence: data.confidence,
-      };
 
-      setPrediction(result);
+      if (predictMode === 'multi') {
+        const result: MultiDigitPrediction = {
+          number: data.number,
+          avg_confidence: data.avg_confidence,
+          digit_count: data.digit_count,
+          digits: data.digits,
+        };
+        setMultiPrediction(result);
+      } else {
+        const result: Prediction = {
+          digit: data.predicted_digit,
+          confidence: data.confidence,
+        };
+        setPrediction(result);
 
-      // Add to the top of history list (don't need to re-fetch)
-      const newEntry: PredictionHistory = {
-        id: String(data.id),
-        timestamp: new Date(data.created_at),
-        prediction: result.digit,
-        confidence: result.confidence,
-        imageData: previewDataUrl ?? "",
-      };
-      setHistory(prev => [newEntry, ...prev].slice(0, 20));
+        // Add to the top of history list (don't need to re-fetch)
+        const newEntry: PredictionHistory = {
+          id: String(data.id),
+          timestamp: new Date(data.created_at),
+          prediction: result.digit,
+          confidence: result.confidence,
+          imageData: previewDataUrl ?? "",
+        };
+        setHistory(prev => [newEntry, ...prev].slice(0, 20));
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "An unexpected error occurred.";
       setErrorMessage(message);
@@ -138,6 +168,7 @@ export function UserDashboard() {
 
   const handleClear = () => {
     setPrediction(null);
+    setMultiPrediction(null);
     setErrorMessage(null);
     if (mode === 'upload') {
       setUploadedImage(null);
@@ -147,6 +178,7 @@ export function UserDashboard() {
   const handleImageUpload = (dataUrl: string) => {
     setUploadedImage(dataUrl);
     setPrediction(null);
+    setMultiPrediction(null);
     setErrorMessage(null);
   };
 
@@ -155,7 +187,7 @@ export function UserDashboard() {
       <div className="mb-8">
         <p className="text-sm font-medium text-blue-600 mb-1">Welcome back, {userName} 👋</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Digit Recognition</h1>
-        <p className="text-gray-600">Draw a digit or upload an image to see the model's prediction</p>
+        <p className="text-gray-600">Draw or upload digits to see the model's prediction</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -189,6 +221,26 @@ export function UserDashboard() {
                     Upload
                   </button>
                 </div>
+                <div className="flex bg-gray-100 rounded-lg p-1 ml-2">
+                  <button
+                    onClick={() => setPredictMode('single')}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${predictMode === 'single'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                  >
+                    1 Digit
+                  </button>
+                  <button
+                    onClick={() => setPredictMode('multi')}
+                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${predictMode === 'multi'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                  >
+                    Multi
+                  </button>
+                </div>
               </div>
               <button
                 onClick={handleClear}
@@ -218,7 +270,7 @@ export function UserDashboard() {
               ) : (
                 <>
                   <Send className="size-5" />
-                  Predict Digit
+                  {predictMode === 'multi' ? 'Predict Digits' : 'Predict Digit'}
                 </>
               )}
             </button>
@@ -249,7 +301,7 @@ export function UserDashboard() {
               </div>
             )}
 
-            <PredictionResults prediction={prediction} isLoading={isProcessing} />
+            <PredictionResults prediction={prediction} multiPrediction={multiPrediction} isLoading={isProcessing} />
           </div>
         </div>
       </div>

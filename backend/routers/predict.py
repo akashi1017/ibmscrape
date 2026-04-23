@@ -10,7 +10,7 @@ from sqlalchemy import func, desc
 from backend import schemas, models, utils
 from backend.database import get_db
 # Import model predict component
-from backend.model import predict
+from backend.model import predict, predict_multi
 
 router = APIRouter()
 UPLOAD_DIR = "uploads"
@@ -53,6 +53,38 @@ def create_prediction(
     db.commit()
     db.refresh(new_prediction)
     return new_prediction
+
+@router.post("/predict-multi", response_model=schemas.MultiDigitPredictionResponse)
+def create_multi_prediction(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(utils.get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    file_extension = file.filename.split(".")[-1] if "." in file.filename else "png"
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    with open(file_path, "rb") as f:
+        image_bytes = f.read()
+        
+    try:
+        number_str, avg_confidence, digit_results = predict_multi(image_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Multi-digit prediction failed: {str(e)}")
+    
+    return schemas.MultiDigitPredictionResponse(
+        number=number_str,
+        avg_confidence=avg_confidence,
+        digit_count=len(digit_results),
+        digits=digit_results,
+        image_path=file_path
+    )
 
 @router.get("/history", response_model=List[schemas.PredictionResponse])
 def get_history(
