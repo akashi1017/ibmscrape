@@ -2,9 +2,12 @@ import { createBrowserRouter, Navigate } from "react-router";
 import API_BASE from "./config";
 
 import AuthLayout from "./components/AuthLayout";
-import Root from "./components/Root";
+import Root, { RootIndex } from "./components/Root";
 
 import { UserDashboard } from "./components/UserDashboard";
+import UserLayout from "./components/UserLayout";
+import UserStatsPage from "./components/UserStatsPage";
+import UserHistoryPage from "./components/UserHistoryPage";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { NotFound } from "./components/NotFound";
 import { LoginPage } from "./components/LoginPage";
@@ -21,28 +24,20 @@ function LoginWithAPI() {
       const response = await fetch(`${API_BASE}/api/auth/login-json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password,
-        }),
+        body: JSON.stringify({ email: credentials.email, password: credentials.password }),
       });
 
       const data = await response.json();
-
       if (!response.ok) {
         let detail = data.detail;
-        if (Array.isArray(detail)) {
-          detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
-        } else if (typeof detail === "object" && detail !== null) {
-          detail = JSON.stringify(detail);
-        }
+        if (Array.isArray(detail)) detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
+        else if (typeof detail === "object" && detail !== null) detail = JSON.stringify(detail);
         throw new Error(detail || "Login failed");
       }
 
       const token = data.access_token;
       localStorage.setItem("mnist-auth-token", token);
 
-      // Get user details
       const userResponse = await fetch(`${API_BASE}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -65,48 +60,36 @@ function LoginWithAPI() {
   return <LoginPage onSubmit={handleLogin} error={error} />;
 }
 
-/** Redirect to the right dashboard based on stored role */
-function RootIndex() {
-  const role = localStorage.getItem("mnist-auth-role");
-  if (role === "admin") return <Navigate to="/admin" replace />;
-  return <Navigate to="/user" replace />;
-}
-
 export const router = createBrowserRouter([
-
-  // AUTH ROUTES (NO SIDEBAR)
+  // AUTH ROUTES
   {
     path: "/login",
     element: <AuthLayout />,
-    children: [
-      {
-        index: true,
-        element: <LoginWithAPI />,
-      },
-    ],
+    children: [{ index: true, element: <LoginWithAPI /> }],
   },
   {
     path: "/register",
     element: <AuthLayout />,
-    children: [
-      {
-        index: true,
-        element: <RegisterPage />,
-      },
-    ],
+    children: [{ index: true, element: <RegisterPage /> }],
   },
 
-  // APP ROUTES (WITH SIDEBAR)
+  // APP ROUTES
   {
     path: "/",
     element: <Root />,
     children: [
       { index: true, element: <RootIndex /> },
-      { path: "user", element: <UserDashboard /> },
+      {
+        path: "user",
+        element: <UserLayout />,
+        children: [
+          { index: true, element: <UserDashboard /> },
+          { path: "dashboard", element: <UserStatsPage /> },
+          { path: "history", element: <UserHistoryPage /> },
+        ],
+      },
       { path: "admin", element: <AdminDashboard /> },
       { path: "*", element: <NotFound /> },
     ],
   },
-
 ]);
-

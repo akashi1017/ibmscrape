@@ -6,65 +6,58 @@ import { RecentPredictions } from "./RecentPredictions";
 import { ImageUpload } from "./ImageUpload";
 import API_BASE from "../config";
 
-export interface Prediction {
+export interface DigitConfidence {
   digit: number;
   confidence: number;
-}
-
-export interface MultiDigitResult {
-  digit: number;
-  confidence: number;
-  raw_scores: Record<string, number>;
 }
 
 export interface MultiDigitPrediction {
-  number: string;
-  avg_confidence: number;
+  predicted_value: string;
+  confidence: number;
   digit_count: number;
-  digits: MultiDigitResult[];
+  per_digit_confidences: DigitConfidence[];
 }
 
 export interface PredictionHistory {
   id: string;
   timestamp: Date;
-  prediction: number;
+  predicted_value: string;
   confidence: number;
+  per_digit_confidences: DigitConfidence[];
   imageData: string;
 }
 
 export function UserDashboard() {
-  const [prediction, setPrediction] = useState<Prediction | null>(null);
-  const [multiPrediction, setMultiPrediction] = useState<MultiDigitPrediction | null>(null);
+  const [prediction, setPrediction] = useState<MultiDigitPrediction | null>(null);
   const [history, setHistory] = useState<PredictionHistory[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [mode, setMode] = useState<'draw' | 'upload'>('draw');
-  const [predictMode, setPredictMode] = useState<'single' | 'multi'>('single');
+  const [mode, setMode] = useState<"draw" | "upload">("draw");
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const userName = localStorage.getItem("mnist-auth-name") || "there";
   const token = localStorage.getItem("mnist-auth-token");
 
-  // Load prediction history from backend (user-scoped via JWT)
   useEffect(() => {
     if (!token) return;
-    fetch(`${API_BASE}/api/history`, {
+    fetch(`${API_BASE}/api/history?limit=20`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: Array<{ id: number; predicted_digit: number; confidence: number; created_at: string; image_path?: string }>) => {
-        const mapped: PredictionHistory[] = data.map((item) => ({
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{
+        id: number; predicted_value: string; confidence: number;
+        per_digit_confidences: DigitConfidence[] | null;
+        created_at: string; image_path?: string;
+      }>) => {
+        setHistory(data.map(item => ({
           id: String(item.id),
           timestamp: new Date(item.created_at),
-          prediction: item.predicted_digit,
+          predicted_value: item.predicted_value,
           confidence: item.confidence,
-          // Backend stores the image path; build a URL or use empty string
-          imageData: item.image_path
-            ? `${API_BASE}/${item.image_path}`
-            : "",
-        }));
-        setHistory(mapped);
+          per_digit_confidences: item.per_digit_confidences ?? [],
+          imageData: item.image_path ? `${API_BASE}/${item.image_path}` : "",
+        })));
       })
       .catch(() => setHistory([]));
   }, [token]);
@@ -72,49 +65,34 @@ export function UserDashboard() {
   const handlePredict = async () => {
     setErrorMessage(null);
     setPrediction(null);
-    setMultiPrediction(null);
 
     let imageBlob: Blob | null = null;
     let previewDataUrl: string | null = null;
 
-    if (mode === 'draw') {
+    if (mode === "draw") {
       const canvas = canvasRef.current;
       if (!canvas) return;
       previewDataUrl = canvas.toDataURL("image/png");
-      await new Promise<void>((resolve) => {
-        canvas.toBlob((blob) => {
-          imageBlob = blob;
-          resolve();
-        }, "image/png");
+      await new Promise<void>(resolve => {
+        canvas.toBlob(blob => { imageBlob = blob; resolve(); }, "image/png");
       });
     } else {
-      if (!uploadedImage) return;
+      if (!uploadedFile || !uploadedImage) return;
       previewDataUrl = uploadedImage;
-      const res = await fetch(uploadedImage);
-      imageBlob = await res.blob();
+      imageBlob = uploadedFile;
     }
 
-    if (!imageBlob) {
-      setErrorMessage("Could not read image. Please try again.");
-      return;
-    }
-
-    if (!token) {
-      setErrorMessage("You are not logged in. Please log in and try again.");
-      return;
-    }
+    if (!imageBlob) { setErrorMessage("Could not read image. Please try again."); return; }
+    if (!token) { setErrorMessage("You are not logged in."); return; }
 
     setIsProcessing(true);
-
     try {
       const formData = new FormData();
-      formData.append("file", imageBlob, "digit.png");
+      const filename = imageBlob instanceof File ? imageBlob.name : "digit.png";
+      formData.append("file", imageBlob, filename);
+      formData.append("source", mode);  // "draw" | "upload" — backend routes to ResNet vs Groq
 
-      const endpoint = predictMode === 'multi'
-        ? `${API_BASE}/api/predict-multi`
-        : `${API_BASE}/api/predict`;
-
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${API_BASE}/api/predict`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -123,44 +101,30 @@ export function UserDashboard() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: `Server error: ${response.status}` }));
         let detail = errorData.detail;
-        if (Array.isArray(detail)) {
-          detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join(";");
-        } else if (typeof detail === "object" && detail !== null) {
-          detail = JSON.stringify(detail);
-        }
+        if (Array.isArray(detail)) detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join(";");
+        else if (typeof detail === "object" && detail !== null) detail = JSON.stringify(detail);
         throw new Error(detail ?? `Request failed with status ${response.status}`);
       }
 
       const data = await response.json();
+      const result: MultiDigitPrediction = {
+        predicted_value: data.predicted_value,
+        confidence: data.confidence,
+        digit_count: data.digit_count,
+        per_digit_confidences: data.per_digit_confidences ?? [],
+      };
+      setPrediction(result);
 
-      if (predictMode === 'multi') {
-        const result: MultiDigitPrediction = {
-          number: data.number,
-          avg_confidence: data.avg_confidence,
-          digit_count: data.digit_count,
-          digits: data.digits,
-        };
-        setMultiPrediction(result);
-      } else {
-        const result: Prediction = {
-          digit: data.predicted_digit,
-          confidence: data.confidence,
-        };
-        setPrediction(result);
-
-        // Add to the top of history list (don't need to re-fetch)
-        const newEntry: PredictionHistory = {
-          id: String(data.id),
-          timestamp: new Date(data.created_at),
-          prediction: result.digit,
-          confidence: result.confidence,
-          imageData: previewDataUrl ?? "",
-        };
-        setHistory(prev => [newEntry, ...prev].slice(0, 20));
-      }
+      setHistory(prev => [{
+        id: String(data.id),
+        timestamp: new Date(data.created_at),
+        predicted_value: result.predicted_value,
+        confidence: result.confidence,
+        per_digit_confidences: result.per_digit_confidences,
+        imageData: previewDataUrl ?? "",
+      }, ...prev].slice(0, 20));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "An unexpected error occurred.";
-      setErrorMessage(message);
+      setErrorMessage(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setIsProcessing(false);
     }
@@ -168,140 +132,100 @@ export function UserDashboard() {
 
   const handleClear = () => {
     setPrediction(null);
-    setMultiPrediction(null);
     setErrorMessage(null);
-    if (mode === 'upload') {
+    if (mode === "upload") {
       setUploadedImage(null);
+      setUploadedFile(null);
     }
   };
 
-  const handleImageUpload = (dataUrl: string) => {
-    setUploadedImage(dataUrl);
-    setPrediction(null);
-    setMultiPrediction(null);
-    setErrorMessage(null);
-  };
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <p className="text-sm font-medium text-blue-600 mb-1">Welcome back, {userName} 👋</p>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Digit Recognition</h1>
-        <p className="text-gray-600">Draw or upload digits to see the model's prediction</p>
+    <div>
+      {/* Section header */}
+      <div className="dg-section-header">
+        <div>
+          <h1 className="dg-section-title">Digit Recognition</h1>
+          <p className="dg-section-subtitle">Draw or upload digits to see the model's prediction</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Drawing Canvas / Upload Area */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {mode === 'draw' ? 'Draw Here' : 'Upload Image'}
-                </h2>
-                <div className="flex bg-gray-100 rounded-lg p-1 ml-4">
+      <div className="dg-predict-grid">
+        {/* Left: input area */}
+        <div>
+          <div className="dg-card">
+            <div className="dg-card-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <h3 className="dg-card-title">
+                  {mode === "draw" ? "Draw here" : "Upload image"}
+                </h3>
+                <div className="dg-toggle-group">
                   <button
-                    onClick={() => setMode('draw')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${mode === 'draw'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                      }`}
+                    className={`dg-toggle-btn${mode === "draw" ? " dg-toggle-btn--active" : ""}`}
+                    onClick={() => setMode("draw")}
                   >
-                    <Pencil className="size-4" />
-                    Draw
+                    <Pencil size={14} /> Draw
                   </button>
                   <button
-                    onClick={() => setMode('upload')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors ${mode === 'upload'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                      }`}
+                    className={`dg-toggle-btn${mode === "upload" ? " dg-toggle-btn--active" : ""}`}
+                    onClick={() => setMode("upload")}
                   >
-                    <Upload className="size-4" />
-                    Upload
-                  </button>
-                </div>
-                <div className="flex bg-gray-100 rounded-lg p-1 ml-2">
-                  <button
-                    onClick={() => setPredictMode('single')}
-                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${predictMode === 'single'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                  >
-                    1 Digit
-                  </button>
-                  <button
-                    onClick={() => setPredictMode('multi')}
-                    className={`px-3 py-1.5 rounded-md text-sm transition-colors ${predictMode === 'multi'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                  >
-                    Multi
+                    <Upload size={14} /> Upload
                   </button>
                 </div>
               </div>
-              <button
-                onClick={handleClear}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <Eraser className="size-4" />
-                Clear
+              <button className="btn-ghost" onClick={handleClear}>
+                <Eraser size={16} /> Clear
               </button>
             </div>
 
-            {mode === 'draw' ? (
+            {mode === "draw" ? (
               <DigitCanvas ref={canvasRef} onClear={handleClear} />
             ) : (
-              <ImageUpload onImageUpload={handleImageUpload} uploadedImage={uploadedImage} />
+              <ImageUpload onImageUpload={(img, file) => { setUploadedImage(img); setUploadedFile(file); setPrediction(null); setErrorMessage(null); }} uploadedImage={uploadedImage} />
             )}
 
             <button
+              className="btn-primary btn-full"
               onClick={handlePredict}
               disabled={isProcessing}
-              className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
+              style={{ marginTop: 16 }}
             >
               {isProcessing ? (
-                <>
-                  <div className="size-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Processing...
-                </>
+                <><span className="dg-spinner" /> Processing…</>
               ) : (
-                <>
-                  <Send className="size-5" />
-                  {predictMode === 'multi' ? 'Predict Digits' : 'Predict Digit'}
-                </>
+                <><Send size={18} /> Predict</>
               )}
             </button>
           </div>
 
-          {/* Recent Predictions */}
-          <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="size-5 text-gray-600" />
-              <h2 className="text-xl font-semibold text-gray-900">My Recent Predictions</h2>
+          {/* Recent predictions */}
+          <div className="dg-card" style={{ marginTop: 16 }}>
+            <div className="dg-card-header">
+              <h3 className="dg-card-title">
+                <Clock size={16} style={{ opacity: 0.5 }} /> Recent predictions
+              </h3>
             </div>
             <RecentPredictions history={history} />
           </div>
         </div>
 
-        {/* Prediction Results */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="size-5 text-blue-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Result</h2>
+        {/* Right: result panel */}
+        <div>
+          <div className="dg-card dg-card--sticky">
+            <div className="dg-card-header">
+              <h3 className="dg-card-title">
+                <TrendingUp size={16} style={{ color: "var(--dg-accent)" }} /> Result
+              </h3>
             </div>
 
             {errorMessage && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
-                <AlertCircle className="size-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{errorMessage}</p>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", background: "#ef444418", border: "1px solid #ef444430", borderRadius: "var(--dg-radius)", marginBottom: 12 }}>
+                <AlertCircle size={16} style={{ color: "var(--dg-red)", flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 13, color: "var(--dg-red)" }}>{errorMessage}</p>
               </div>
             )}
 
-            <PredictionResults prediction={prediction} multiPrediction={multiPrediction} isLoading={isProcessing} />
+            <PredictionResults prediction={prediction} isLoading={isProcessing} />
           </div>
         </div>
       </div>

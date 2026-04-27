@@ -1,328 +1,201 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
+import { Hash, Eye, EyeOff } from "lucide-react";
 import API_BASE from "../config";
 
-export function RegisterPage() {
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [error, setError] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const navigate = useNavigate();
+function DigitsBackdrop() {
+  const digits = useMemo(() => {
+    return Array.from({ length: 12 }, () => ({
+      digit: Math.floor(Math.random() * 10),
+      left: Math.random() * 95,
+      top: Math.random() * 95,
+      size: 80 + Math.random() * 180,
+      duration: 30 + Math.random() * 30,
+      delay: -Math.random() * 30,
+      dx: (Math.random() - 0.5) * 80,
+      dy: (Math.random() - 0.5) * 80,
+      rot: (Math.random() - 0.5) * 30,
+    }));
+  }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError(null);
-
-        if (password !== confirmPassword) {
-            setError("Passwords do not match");
-            return;
-        }
-
-        setIsLoading(true);
-
-        try {
-            const response = await fetch(`${API_BASE}/api/auth/register`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: name.trim(),
-                    email: email.trim(),
-                    password: password,
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                // FastAPI validation errors return detail as an array of objects
-                let detail = data.detail;
-                if (Array.isArray(detail)) {
-                    detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
-                } else if (typeof detail === "object" && detail !== null) {
-                    detail = JSON.stringify(detail);
-                }
-                throw new Error(detail || "Registration failed");
-            }
-
-            // Success - redirect to login
-            navigate("/login");
-        } catch (err: any) {
-            setError(err.message || "An error occurred during registration");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <div
-            style={{
-                minHeight: "100vh",
-                background: "linear-gradient(180deg, #f1f2f9 0%, #f5f6fb 100%)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                padding: "60px 16px 40px",
-            }}
+  return (
+    <div className="digits-backdrop" aria-hidden="true">
+      {digits.map((d, i) => (
+        <span
+          key={i}
+          className="floating-digit mono"
+          style={{
+            left: `${d.left}%`,
+            top: `${d.top}%`,
+            fontSize: `${d.size}px`,
+            animationDuration: `${d.duration}s`,
+            animationDelay: `${d.delay}s`,
+            "--dx": `${d.dx}px`,
+            "--dy": `${d.dy}px`,
+            "--rot": `${d.rot}deg`,
+          } as React.CSSProperties}
         >
-            <header style={{ textAlign: "center", marginBottom: "34px" }}>
-                <h1
-                    style={{
-                        margin: 0,
-                        fontSize: "clamp(2rem, 5vw, 3.3rem)",
-                        lineHeight: 1.08,
-                        fontWeight: 800,
-                        color: "#10172b",
-                        letterSpacing: "-0.02em",
-                    }}
-                >
-                    Digit Classification
-                </h1>
-                <p
-                    style={{
-                        marginTop: "12px",
-                        marginBottom: 0,
-                        color: "#6f7689",
-                        fontSize: "1.02rem",
-                        fontWeight: 500,
-                    }}
-                >
-                    AI-Powered Number Recognition
-                </p>
-            </header>
+          {d.digit}
+        </span>
+      ))}
+    </div>
+  );
+}
 
-            <div
-                style={{
-                    width: "100%",
-                    maxWidth: "450px",
-                    backgroundColor: "#ffffff",
-                    borderRadius: "22px",
-                    boxShadow: "0 16px 40px rgba(39, 43, 63, 0.12)",
-                    padding: "40px 38px 34px",
-                }}
-            >
-                <div style={{ textAlign: "center", marginBottom: "28px" }}>
-                    <h2
-                        style={{
-                            margin: 0,
-                            color: "#10172b",
-                            fontSize: "2rem",
-                            lineHeight: 1.15,
-                            fontWeight: 800,
-                        }}
-                    >
-                        Create Account
-                    </h2>
-                    <p
-                        style={{
-                            marginTop: "9px",
-                            marginBottom: 0,
-                            color: "#7d8396",
-                            fontSize: "1.05rem",
-                        }}
-                    >
-                        Join the community
-                    </p>
-                </div>
+export function RegisterPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-                <form onSubmit={handleSubmit}>
-                    <div style={{ marginBottom: "16px" }}>
-                        <label
-                            htmlFor="name"
-                            style={{
-                                display: "block",
-                                marginBottom: "8px",
-                                color: "#2a3144",
-                                fontSize: "1.05rem",
-                                fontWeight: 700,
-                            }}
-                        >
-                            Full Name
-                        </label>
-                        <input
-                            id="name"
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            placeholder="Enter your name"
-                            style={{
-                                width: "100%",
-                                height: "52px",
-                                borderRadius: "13px",
-                                border: "1px solid #e4e6ee",
-                                padding: "0 18px",
-                                fontSize: "1.07rem",
-                                color: "#1d2638",
-                                backgroundColor: "#ffffff",
-                                outline: "none",
-                            }}
-                        />
-                    </div>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
 
-                    <div style={{ marginBottom: "16px" }}>
-                        <label
-                            htmlFor="email"
-                            style={{
-                                display: "block",
-                                marginBottom: "8px",
-                                color: "#2a3144",
-                                fontSize: "1.05rem",
-                                fontWeight: 700,
-                            }}
-                        >
-                            Email Address
-                        </label>
-                        <input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            placeholder="Enter your email"
-                            style={{
-                                width: "100%",
-                                height: "52px",
-                                borderRadius: "13px",
-                                border: "1px solid #e4e6ee",
-                                padding: "0 18px",
-                                fontSize: "1.07rem",
-                                color: "#1d2638",
-                                backgroundColor: "#ffffff",
-                                outline: "none",
-                            }}
-                        />
-                    </div>
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
 
-                    <div style={{ marginBottom: "16px" }}>
-                        <label
-                            htmlFor="password"
-                            style={{
-                                display: "block",
-                                marginBottom: "8px",
-                                color: "#2a3144",
-                                fontSize: "1.05rem",
-                                fontWeight: 700,
-                            }}
-                        >
-                            Password
-                        </label>
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            placeholder="Create a password"
-                            style={{
-                                width: "100%",
-                                height: "52px",
-                                borderRadius: "13px",
-                                border: "1px solid #e4e6ee",
-                                padding: "0 18px",
-                                fontSize: "1.07rem",
-                                color: "#1d2638",
-                                backgroundColor: "#ffffff",
-                                outline: "none",
-                            }}
-                        />
-                    </div>
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+      });
 
-                    <div style={{ marginBottom: "26px" }}>
-                        <label
-                            htmlFor="confirmPassword"
-                            style={{
-                                display: "block",
-                                marginBottom: "8px",
-                                color: "#2a3144",
-                                fontSize: "1.05rem",
-                                fontWeight: 700,
-                            }}
-                        >
-                            Confirm Password
-                        </label>
-                        <input
-                            id="confirmPassword"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            placeholder="Confirm your password"
-                            style={{
-                                width: "100%",
-                                height: "52px",
-                                borderRadius: "13px",
-                                border: "1px solid #e4e6ee",
-                                padding: "0 18px",
-                                fontSize: "1.07rem",
-                                color: "#1d2638",
-                                backgroundColor: "#ffffff",
-                                outline: "none",
-                            }}
-                        />
-                    </div>
+      const data = await response.json();
+      if (!response.ok) {
+        let detail = data.detail;
+        if (Array.isArray(detail)) detail = detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
+        else if (typeof detail === "object" && detail !== null) detail = JSON.stringify(detail);
+        throw new Error(detail || "Registration failed");
+      }
 
-                    {error ? (
-                        <p
-                            style={{
-                                marginTop: 0,
-                                marginBottom: "14px",
-                                color: "#d14343",
-                                fontSize: "0.96rem",
-                            }}
-                        >
-                            {error}
-                        </p>
-                    ) : null}
+      navigate("/login");
+    } catch (err: any) {
+      setError(err.message || "An error occurred during registration");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        style={{
-                            width: "100%",
-                            height: "54px",
-                            border: "none",
-                            borderRadius: "15px",
-                            background: "linear-gradient(90deg, #605eff 0%, #4f46e5 100%)",
-                            color: "#ffffff",
-                            fontSize: "1.55rem",
-                            fontWeight: 800,
-                            cursor: isLoading ? "not-allowed" : "pointer",
-                            boxShadow: "0 12px 28px rgba(96, 94, 255, 0.35)",
-                            letterSpacing: "0.01em",
-                            opacity: isLoading ? 0.8 : 1,
-                        }}
-                    >
-                        {isLoading ? "Creating Account..." : "Sign Up"}
-                    </button>
-                </form>
-
-                <div
-                    style={{
-                        marginTop: "26px",
-                        borderTop: "1px solid #eceef4",
-                        paddingTop: "20px",
-                        textAlign: "center",
-                        color: "#6f7689",
-                        fontSize: "1.02rem",
-                    }}
-                >
-                    Already have an account?{" "}
-                    <Link
-                        to="/login"
-                        style={{
-                            color: "#5b59df",
-                            fontWeight: 700,
-                            textDecoration: "none",
-                        }}
-                    >
-                        Log In
-                    </Link>
-                </div>
-            </div>
+  return (
+    <div className="auth-page">
+      <DigitsBackdrop />
+      <div className="auth-brand">
+        <div className="auth-logo">
+          <Hash size={28} />
         </div>
-    );
+        <h1 className="auth-title">Digit Classification</h1>
+        <p className="auth-subtitle">AI-Powered Number Recognition</p>
+      </div>
+
+      <div className="auth-card">
+        <h2 className="auth-card-title">Create account</h2>
+        <p className="auth-card-desc">Get started for free</p>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Full name</label>
+            <input
+              className="form-input"
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Jane Doe"
+              required
+              autoComplete="name"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              className="form-input"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <div style={{ position: "relative" }}>
+              <input
+                className="form-input"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="new-password"
+                style={{ paddingRight: "40px" }}
+              />
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", padding: "4px", height: "auto", border: "none", background: "transparent", color: "var(--dg-muted)" }}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Confirm password</label>
+            <div style={{ position: "relative" }}>
+              <input
+                className="form-input"
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="new-password"
+                style={{ paddingRight: "40px" }}
+              />
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", padding: "4px", height: "auto", border: "none", background: "transparent", color: "var(--dg-muted)" }}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {error && <p className="form-error">{error}</p>}
+
+          <button
+            type="submit"
+            className="btn-primary btn-full"
+            disabled={isLoading}
+            style={{ marginTop: 4 }}
+          >
+            {isLoading ? (
+              <><span className="dg-spinner" /> Creating…</>
+            ) : (
+              "Create account"
+            )}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          Already have an account?{" "}
+          <Link to="/login" className="form-link">Sign in</Link>
+        </div>
+      </div>
+    </div>
+  );
 }

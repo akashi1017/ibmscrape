@@ -3,7 +3,7 @@ import { Upload, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface ImageUploadProps {
-  onImageUpload: (dataUrl: string) => void;
+  onImageUpload: (dataUrl: string, file: File) => void;
   uploadedImage: string | null;
 }
 
@@ -40,7 +40,7 @@ export function ImageUpload({ onImageUpload, uploadedImage }: ImageUploadProps) 
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
-      onImageUpload(dataUrl);
+      onImageUpload(dataUrl, file);
     };
     reader.readAsDataURL(file);
   };

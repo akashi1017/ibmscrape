@@ -4,7 +4,21 @@
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Mnist Dashboard</title>
+      <title>Digit Classification</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      <script>
+        (function() {
+          try {
+            var stored = localStorage.getItem('dg-theme');
+            var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', stored || (prefersDark ? 'dark' : 'light'));
+          } catch(e) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+          }
+        })();
+      </script>
       <script>
         // Landbot
         window.addEventListener('mouseover', initLandbot, { once: true });
@@ -31,6 +45,7 @@
     <body>
       <div id="root"></div>
       <script type="module" src="/src/main.tsx"></script>
+      <!--
       <script>
         function initFreshdesk() {
           window.fdWidget.init({
@@ -42,6 +57,7 @@
 
         function initialize(i, t) { var e; i.getElementById(t) ? initFreshdesk() : ((e = i.createElement("script")).id = t, e.async = !0, e.src = "https://gnuac-help.freshdesk.com/webchat/js/widget.js", e.onload = initFreshdesk, i.head.appendChild(e)) } function initiateCall() { initialize(document, "Freshdesk-js-sdk") } window.addEventListener ? window.addEventListener("load", initiateCall, !1) : window.attachEvent("load", initiateCall, !1);
       </script>
+      -->
     </body>
   </html>
   

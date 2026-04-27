@@ -5,7 +5,7 @@ import os
 import sys
 from sqlalchemy import create_engine, text
 from backend.database import Base, engine
-from backend.models import User
+from backend.models import User, Prediction
 
 def create_tables():
     """Create all database tables"""
