@@ -1,41 +1,41 @@
 import { PredictionHistory } from "./UserDashboard";
+import { Clock } from "lucide-react";
 
-interface RecentPredictionsProps {
+interface Props {
   history: PredictionHistory[];
 }
 
-export function RecentPredictions({ history }: RecentPredictionsProps) {
+export function RecentPredictions({ history }: Props) {
   if (history.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <p>No predictions yet</p>
+      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--fg-muted)", fontSize: 13 }}>
+        No predictions yet — draw or upload a number above.
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
-      {history.map((item) => (
-        <div
-          key={item.id}
-          className="relative group"
-        >
-          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-            <img
-              src={item.imageData}
-              alt={`Digit ${item.prediction}`}
-              className="w-full h-full object-cover"
-            />
+    <div className="dg-recent-list">
+      {history.slice(0, 8).map(item => {
+        const pct = (item.confidence * 100).toFixed(0);
+        const timeStr = item.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return (
+          <div key={item.id} className="dg-recent-item">
+            <div className="dg-recent-thumb">
+              {item.imageData ? (
+                <img src={item.imageData} alt={item.predicted_value} />
+              ) : null}
+            </div>
+            <span className="mono" style={{ fontWeight: 600, fontSize: 15 }}>
+              {item.predicted_value}
+            </span>
+            <span className="dg-conf-badge">{pct}%</span>
+            <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--fg-muted)" }}>
+              {timeStr}
+            </span>
           </div>
-          <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white text-xs font-bold rounded-full size-6 flex items-center justify-center border-2 border-white">
-            {item.prediction}
-          </div>
-          <div className="absolute inset-0 bg-black bg-opacity-75 text-white text-xs p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex flex-col justify-center">
-            <div className="font-semibold">Digit: {item.prediction}</div>
-            <div>{(item.confidence * 100).toFixed(0)}%</div>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

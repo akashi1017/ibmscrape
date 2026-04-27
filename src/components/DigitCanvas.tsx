@@ -32,7 +32,7 @@ export const DigitCanvas = forwardRef<HTMLCanvasElement, DigitCanvasProps>(
       ctx.fillStyle = "white";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = "black";
-      ctx.lineWidth = 20;
+      ctx.lineWidth = 14;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
     }, []);
@@ -60,7 +60,7 @@ export const DigitCanvas = forwardRef<HTMLCanvasElement, DigitCanvasProps>(
       const { x, y } = getPos(e);
 
       ctx.beginPath();
-      ctx.lineWidth = isErasing ? 26 : 20;
+      ctx.lineWidth = isErasing ? 26 : 14;
       ctx.strokeStyle = isErasing ? "white" : "black";
       ctx.moveTo(x, y);
     };
@@ -77,7 +77,7 @@ export const DigitCanvas = forwardRef<HTMLCanvasElement, DigitCanvasProps>(
       if (!ctx) return;
 
       const { x, y } = getPos(e);
-      ctx.lineWidth = isErasing ? 26 : 20;
+      ctx.lineWidth = isErasing ? 26 : 14;
       ctx.strokeStyle = isErasing ? "white" : "black";
       ctx.lineTo(x, y);
       ctx.stroke();
@@ -102,47 +102,40 @@ export const DigitCanvas = forwardRef<HTMLCanvasElement, DigitCanvasProps>(
     };
 
     return (
-      <div className="flex justify-center">
-        <div className="relative">
-          {/* Controls overlay */}
-          <div className="absolute right-2 -top-10 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setIsErasing((v) => !v)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors border ${
-                isErasing
-                  ? "bg-white text-blue-600 border-blue-200 shadow-sm"
-                  : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
-              }`}
-              title="Toggle eraser"
-            >
-              <EraserIcon className="size-4" />
-              {isErasing ? "Eraser" : "Draw"}
-            </button>
-            <button
-              type="button"
-              onClick={clearCanvas}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
-              title="Clear canvas"
-            >
-              <RotateCcw className="size-4" />
-              Clear
-            </button>
-          </div>
-
-          <canvas
-            ref={attachRef}
-            width={280}
-            height={280}
-            className="border-2 border-gray-300 rounded-lg cursor-crosshair touch-none bg-white"
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-          />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <canvas
+          ref={attachRef}
+          width={280}
+          height={280}
+          style={{ borderRadius: "var(--dg-radius)", border: "1px solid var(--dg-border)", cursor: isErasing ? "cell" : "crosshair", touchAction: "none", background: "white", display: "block" }}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+        />
+        <div style={{ display: "flex", gap: 6, alignSelf: "flex-end" }}>
+          <button
+            type="button"
+            onClick={() => setIsErasing((v) => !v)}
+            className="btn-ghost btn-sm"
+            style={isErasing ? { borderColor: "var(--dg-accent)", color: "var(--dg-accent)" } : {}}
+            title="Toggle eraser"
+          >
+            <EraserIcon size={14} />
+            {isErasing ? "Eraser on" : "Eraser"}
+          </button>
+          <button
+            type="button"
+            onClick={clearCanvas}
+            className="btn-ghost btn-sm"
+            title="Clear canvas"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </button>
         </div>
       </div>
     );
