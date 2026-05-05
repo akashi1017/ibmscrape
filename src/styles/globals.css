@@ -257,11 +257,11 @@ html {
   50% { transform: translate(var(--dx, 40px), var(--dy, -30px)) rotate(var(--rot, 8deg)); }
   100% { transform: translate(0, 0) rotate(0deg); }
 }
-@keyframes digit-fade { 0%, 100% { opacity: 0; } 50% { opacity: 0.10; } }
+@keyframes digit-fade { 0%, 100% { opacity: 0; } 50% { opacity: 0.35; } }
 [data-theme="light"] .floating-digit { animation: digit-drift linear infinite, digit-fade-light ease-in-out infinite; }
-@keyframes digit-fade-light { 0%, 100% { opacity: 0; } 50% { opacity: 0.08; } }
+@keyframes digit-fade-light { 0%, 100% { opacity: 0; } 50% { opacity: 0.28; } }
 @media (prefers-reduced-motion: reduce) { .floating-digit { animation: none; opacity: 0.06; } }
-.auth-page > * { position: relative; z-index: 1; }
+.auth-page > *:not(.digits-backdrop) { position: relative; z-index: 1; }
 .auth-brand { text-align: center; margin-bottom: 32px; }
 .auth-logo {
   width: 48px; height: 48px; border-radius: var(--dg-radius-lg); background: var(--dg-accent);
