@@ -1,46 +1,11 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import { Hash, Eye, EyeOff } from "lucide-react";
+import { DigitsBackdrop } from "./DigitsBackdrop";
 import API_BASE from "../config";
 
-function DigitsBackdrop() {
-  const digits = useMemo(() => {
-    return Array.from({ length: 12 }, () => ({
-      digit: Math.floor(Math.random() * 10),
-      left: Math.random() * 95,
-      top: Math.random() * 95,
-      size: 80 + Math.random() * 180,
-      duration: 30 + Math.random() * 30,
-      delay: -Math.random() * 30,
-      dx: (Math.random() - 0.5) * 80,
-      dy: (Math.random() - 0.5) * 80,
-      rot: (Math.random() - 0.5) * 30,
-    }));
-  }, []);
 
-  return (
-    <div className="digits-backdrop" aria-hidden="true">
-      {digits.map((d, i) => (
-        <span
-          key={i}
-          className="floating-digit mono"
-          style={{
-            left: `${d.left}%`,
-            top: `${d.top}%`,
-            fontSize: `${d.size}px`,
-            animationDuration: `${d.duration}s`,
-            animationDelay: `${d.delay}s`,
-            "--dx": `${d.dx}px`,
-            "--dy": `${d.dy}px`,
-            "--rot": `${d.rot}deg`,
-          } as React.CSSProperties}
-        >
-          {d.digit}
-        </span>
-      ))}
-    </div>
-  );
-}
+
 
 export function RegisterPage() {
   const [name, setName] = useState("");
